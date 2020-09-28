@@ -50,6 +50,7 @@ Cell cell[7][7];
 int group_counter = 0;
 int selected_color, first_field_i, first_field_j, second_field_i, second_field_j;
 vector<Slot> slot;
+int colorpieces_pc[5]; // colorblock is for Cell. colorblock[0] is meaningless
 
 void redraw_board(); /* given below */
 int game_ended(); /* needs to be written */
@@ -95,6 +96,10 @@ int main(int argc, char **argv)
   gameboard[3][3] = 7; /*blocked*/
   for( i=0; i<5; i++)
     colorpieces[i]=6; /* pieces for each color */
+
+  /* initialize colorblock for Cell */
+  	for( i=0; i<5; i++)
+    colorpieces_pc[i]=6; /* pieces for each color */
   
   /* opening display: basic connection to X Server */
   if( (display_ptr = XOpenDisplay(display_name)) == NULL )
@@ -536,7 +541,7 @@ void make_M_move() {
 	// find available slot around mouse click
 	//printf("I am enter find_avaslot()\n");
 		// find_near_ava_slot can imporve
-		find_near_ava_slot_L(first_field_i,first_field_j,second_field_i,second_field_j, slot);
+		find_near_ava_slot_M(first_field_i,first_field_j,second_field_i,second_field_j, slot);
 		/*int test_size = slot.size();
 		for(int i=0; i<test_size; i++){
 			printf("candidate slot coordinate list below\n");
@@ -546,6 +551,7 @@ void make_M_move() {
 	// draw color for cell
 		cell[first_field_i][first_field_j].color = gameboard[first_field_i][first_field_j];
 		cell[second_field_i][second_field_j].color = gameboard[second_field_i][second_field_j];
+		colorpieces_pc[selected_color] -= 1; // piece count for pc
 
 		int size = slot.size();
 		if(size > 0){
@@ -591,6 +597,7 @@ void make_M_move() {
 				if(colorpieces[index] > 0){
 					gameboard[x][y] = index;
 					gameboard[x_2][y_2] = index;
+					colorpieces[index] -= 1;
 					break;
 				}
 				else
@@ -605,6 +612,7 @@ void make_M_move() {
 				if((selected_color != i) && (colorpieces[i] > 0)){
 					gameboard[x][y] = i;
 			  		gameboard[x_2][y_2] = i;
+			  		colorpieces[i] -= 1;
 				}
 			// for(int i=1; i<5; i++){
 			// 	if(colorpieces[i] > 0){
@@ -616,6 +624,10 @@ void make_M_move() {
 			printf("no color[i] is: %d \n", i);
 		}
 
+	// update colorpieces_pc according to colorpieces
+		for(int i=0; i<5; i++){
+			colorpieces_pc[i] = colorpieces[i];
+		}
 
 	// refresh the slot
 		slot.clear();
@@ -646,6 +658,8 @@ void make_M_move() {
 				if(colorpieces[index] > 0){
 					gameboard[pos[0]][pos[1]] = index;
 					gameboard[pos[2]][pos[3]] = index;
+					colorpieces[index] -= 1;
+					colorpieces_pc[index] -= 1;
 					break;
 				}
 				else
@@ -659,6 +673,8 @@ void make_M_move() {
 						if(colorpieces[i] > 0){
 							gameboard[pos[0]][pos[1]] = i;
 							gameboard[pos[2]][pos[3]] = i;
+							colorpieces[i] -= 1;
+							colorpieces_pc[i] -= 1;
 							break;
 						}
 					}
@@ -688,6 +704,7 @@ void make_L_move() {
 	// draw color for cell
 	cell[first_field_i][first_field_j].color = gameboard[first_field_i][first_field_j];
 	cell[second_field_i][second_field_j].color = gameboard[second_field_i][second_field_j];
+	colorpieces_pc[selected_color] -= 1; // count piece for computer
 
 	int size = slot.size();
 	if(size > 0){
@@ -711,8 +728,26 @@ void make_L_move() {
 		y_2 = slot[move].y_2;
 
 	// draw color
-		gameboard[x][y] = selected_color;
-		gameboard[x_2][y_2] = selected_color;
+		if(colorpieces[selected_color] > 0){
+			gameboard[x][y] = selected_color;
+			gameboard[x_2][y_2] = selected_color;
+			colorpieces[selected_color] -= 1; // count piece for human
+		}
+		else{
+			for(int i=1; i<5; i++){
+				if(colorpieces[i] > 0){
+					gameboard[x][y] = i;
+					gameboard[x_2][y_2] = i;
+					colorpieces[i] -= 1;
+					break;
+				}
+			}
+		}
+		
+	// coz colorpieces_pc already changed when call minimax function. So update colorpieces_pc according to colorpieces
+		for(int i=0; i<5; i++){
+			colorpieces_pc[i] = colorpieces[i];
+		}
 
 	// refresh the slot
 		slot.clear();
@@ -726,30 +761,40 @@ void make_L_move() {
 		vector<int> color;
 		detect_around_color(pos[0], pos[1], color);
 		detect_around_color(pos[2], pos[3], color); // get around color
+		
 
 		// traverse around color
 		int size = color.size();
 		// if have one color around
 		if(size > 0){
 			for(int i=0; i<size; i++){
+				printf("candidate color is: %d \n", color[i]);
 			if((color[i] == 1) && (colorpieces[1] > 0)){
 				gameboard[pos[0]][pos[1]] = 1;
 				gameboard[pos[2]][pos[3]] = 1;
+				colorpieces[1] -= 1;
+				colorpieces_pc[1] -= 1;
 				break;
 			}
 			else if((color[i] == 2) && (colorpieces[2] > 0)){
 				gameboard[pos[0]][pos[1]] = 2;
 				gameboard[pos[2]][pos[3]] = 2;
+				colorpieces[2] -= 1;
+				colorpieces_pc[2] -= 1;
 				break;
 			}
 			else if((color[i] == 3) && (colorpieces[3] > 0)){
 				gameboard[pos[0]][pos[1]] = 3;
 				gameboard[pos[2]][pos[3]] = 3;
+				colorpieces[3] -= 1;
+				colorpieces_pc[3] -= 1;
 				break;
 			}
 			else if((color[i] == 4) && (colorpieces[4] > 0)){
 				gameboard[pos[0]][pos[1]] = 4;
 				gameboard[pos[2]][pos[3]] = 4;
+				colorpieces[4] -= 1;
+				colorpieces_pc[4] -= 1;
 				break;
 			}
 		}
@@ -761,6 +806,8 @@ void make_L_move() {
 				if(colorpieces[i] > 0){
 					gameboard[pos[0]][pos[1]] = i;
 					gameboard[pos[2]][pos[3]] = i;
+					colorpieces[i] -= 1;
+					colorpieces_pc[i] -= 1;
 					break;
 				}
 			}
@@ -873,9 +920,10 @@ int minimax(vector<Slot> slot, int depth, bool isMax){
 					continue; // have the color around
 				}
 				// the color is not exist around and colorpieces > 0
-				else if(colorpieces[index] > 0){
+				else if(colorpieces_pc[index] > 0){
 					cell[slot[i].x][slot[i].y].color = index;
 					cell[slot[i].x_2][slot[i].y_2].color = index;
+					colorpieces_pc[index] -= 1;
 					break;
 				}	
 				else
@@ -886,9 +934,10 @@ int minimax(vector<Slot> slot, int depth, bool isMax){
 			// the color 
 			if(color_count == 4){
 				for(int i=1; i<5; i++){
-					if(colorpieces[i] > 0){
+					if(colorpieces_pc[i] > 0){
 					cell[slot[i].x][slot[i].y].color = i;
 					cell[slot[i].x_2][slot[i].y_2].color = i;
+					colorpieces_pc[i] -= 1;
 					break;
 				}
 			}
@@ -906,9 +955,11 @@ int minimax(vector<Slot> slot, int depth, bool isMax){
 		int v = 100; // initial score
 		int size = slot.size();
 		for(int i=0; i<size; i++){
-			if(colorpieces[selected_color] > 0){
+			if(colorpieces_pc[selected_color] > 0){
 				// 1st priority color
 				cell[slot[i].x][slot[i].y].color = cell[slot[i].x_2][slot[i].y_2].color = selected_color;
+				colorpieces_pc[selected_color] -= 1;
+
 			}
 			else{ 
 			// 2nd priority select around color
@@ -918,24 +969,28 @@ int minimax(vector<Slot> slot, int depth, bool isMax){
 				// traverse around color
 				int size = color.size();
 				for(int i=0; i<size; i++){
-					if((color[i] == 1) && (colorpieces[1] > 0)){
+					if((color[i] == 1) && (colorpieces_pc[1] > 0)){
 						cell[slot[i].x][slot[i].y].color = 1;
 						cell[slot[i].x_2][slot[i].y_2].color = 1;
+						colorpieces_pc[1] -= 1;
 						break;
 					}
-					else if((color[i] == 2) && (colorpieces[2] > 0)){
+					else if((color[i] == 2) && (colorpieces_pc[2] > 0)){
 						cell[slot[i].x][slot[i].y].color = 2;
 						cell[slot[i].x_2][slot[i].y_2].color = 2;
+						colorpieces_pc[2] -= 1;
 						break;
 					}
-					else if((color[i] == 3) && (colorpieces[3] > 0)){
+					else if((color[i] == 3) && (colorpieces_pc[3] > 0)){
 						cell[slot[i].x][slot[i].y].color = 3;
 						cell[slot[i].x_2][slot[i].y_2].color = 3;
+						colorpieces_pc[3] -= 1;
 						break;
 					}
-					else if((color[i] == 4) && (colorpieces[4] > 0)){
+					else if((color[i] == 4) && (colorpieces_pc[4] > 0)){
 						cell[slot[i].x][slot[i].y].color = 4;
 						cell[slot[i].x_2][slot[i].y_2].color = 4;
+						colorpieces_pc[4] -= 4;
 						break;
 					}
 
@@ -1382,16 +1437,16 @@ void find_near_ava_slot_M(int i, int j, int i_2, int j_2, vector<Slot> &slot){
 // need to call 2 times
 void detect_around_color(int i, int j, vector<int> &around_color){
 
-	if((i > 0) && (gameboard[i-1][j] != 0) && (gameboard[i-1][j] != 7)){
+	if((i > 0) && (gameboard[i-1][j] != 0) && (gameboard[i-1][j] != 7) && (colorpieces[gameboard[i-1][j]] > 0)){
 		around_color.push_back(gameboard[i-1][j]);
 	}
-	if((i < 6) && (gameboard[i+1][j] != 0) && (gameboard[i+1][j] != 7)){
+	if((i < 6) && (gameboard[i+1][j] != 0) && (gameboard[i+1][j] != 7) && (colorpieces[gameboard[i+1][j]] > 0)){
 		around_color.push_back(gameboard[i+1][j]);
 	}
-	if((j > 0) && (gameboard[i][j-1] != 0) && (gameboard[i][j-1] != 7)){
+	if((j > 0) && (gameboard[i][j-1] != 0) && (gameboard[i][j-1] != 7) && (colorpieces[gameboard[i][j-1]] > 0)){
 		around_color.push_back(gameboard[i][j-1]);
 	}
-	if((j < 6) && (gameboard[i][j+1] != 0) && (gameboard[i][j+1] != 7)){
+	if((j < 6) && (gameboard[i][j+1] != 0) && (gameboard[i][j+1] != 7) && (colorpieces[gameboard[i][j+1]] > 0)){
 		around_color.push_back(gameboard[i][j+1]);
 	}
 }
